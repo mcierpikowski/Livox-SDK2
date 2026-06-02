@@ -560,13 +560,26 @@ void GeneralCommandHandler::LivoxLidarInfoChange(const uint32_t handle) {
 }
 
 void GeneralCommandHandler::PushLivoxLidarInfo(const uint32_t handle, const std::string& info) {
-  std::lock_guard<std::mutex> lock(dev_type_mutex_);
-  if (device_dev_type_.find(handle) != device_dev_type_.end()) {
-    uint8_t dev_type = device_dev_type_[handle];
-    
-    if (livox_lidar_info_cb_) {
-      livox_lidar_info_cb_(handle, dev_type, info.c_str(), livox_lidar_info_client_data_);
+  uint8_t dev_type;
+  {
+    std::lock_guard<std::mutex> lock(dev_type_mutex_);
+    if (device_dev_type_.find(handle) != device_dev_type_.end()) {
+      dev_type = device_dev_type_[handle];
     }
+    else
+    {
+      if (custom_lidars_cfg_map_.find(handle) == custom_lidars_cfg_map_.end())
+      {
+        LOG_ERROR("Push livox lidar info failed, get dev type failed");
+        return;
+      }
+      dev_type = custom_lidars_cfg_map_[handle].device_type;
+      device_dev_type_[handle] = dev_type;
+    }
+  }
+
+  if (livox_lidar_info_cb_) {
+    livox_lidar_info_cb_(handle, dev_type, info.c_str(), livox_lidar_info_client_data_);
   }
 }
 
